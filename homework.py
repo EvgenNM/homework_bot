@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(
     filename='main.log',
@@ -60,7 +59,7 @@ def send_message(bot, message):
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug('удачная отправка сообщения в Telegram')
     except Exception as error:
-        logging.error(f'сбой при отправке сообщения в Telegram: {error}')
+        logging.warning(error, exc_info=True)
 
 
 def get_api_answer(timestamp):
@@ -135,25 +134,19 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    bot = TeleBot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
-    message_telegram = ''
-    while True:
-        if not check_tokens():
-            break
-
-        try:
-            response = get_api_answer(timestamp)
-            homework = check_response(response)
-            message = parse_status(homework)
-            if message and message_telegram != message:
-                send_message(bot, message)
-                message_telegram = message
-        except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            if message_telegram != message:
-                send_message(bot, message)
-                message_telegram = message
+    work = False
+    if check_tokens():
+        bot = TeleBot(token=TELEGRAM_TOKEN)
+        timestamp = int(time.time())
+        message_telegram = ''
+        work = True
+    while work:
+        response = get_api_answer(timestamp)
+        homework = check_response(response)
+        message = parse_status(homework)
+        if message and message_telegram != message:
+            send_message(bot, message)
+            message_telegram = message
         time.sleep(RETRY_PERIOD)
 
 
