@@ -1,0 +1,2 @@
+class ErrorStatusCode(Exception):
+    pass
