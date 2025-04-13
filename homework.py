@@ -3,7 +3,7 @@ import os
 import requests
 import logging
 
-from telebot import TeleBot, types
+from telebot import TeleBot
 from dotenv import load_dotenv
 
 
@@ -48,14 +48,13 @@ def check_tokens():
                 f'{key}. Программа принудительно остановлена.'
             )
             break
-    # print('Переменные окружения работают') ###############################
     return all([value for value in result.values()])
 
 
 def send_message(bot, message):
     """
     Отправляет сообщение в Telegram-чат,
-    определяемый переменной окружения TELEGRAM_CHAT_ID.
+    определяемый переменной окружения.
     """
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
@@ -66,40 +65,45 @@ def send_message(bot, message):
 
 def get_api_answer(timestamp):
     """Делает запрос к единственному эндпоинту API-сервиса."""
+    homework_statuses = None
     try:
         homework_statuses = requests.get(
             ENDPOINT,
             headers=HEADERS,
             params={'from_date': timestamp}
         )
-        # print('go homework_statuses')########################################
         if homework_statuses.status_code == 200:
             result = homework_statuses.json()
-            # print('status normal')##########################################
-            # print(result) ###############################################
             return result
-        else:
-            logging.error('Ошибка статус кода')
     except Exception as error:
         logging.error(f'ошибка при запросе к эндпоинту: {error}')
+
+    if homework_statuses is not None and homework_statuses.status_code != 200:
+        logging.error('Ошибка статус кода')
+        raise Exception
 
 
 def check_response(response):
     """Проверяет ответ API на соответствие документации из урока."""
     if not response:
+        logging.error('response пуст')
         return None
     elif not isinstance(response, dict):
+        logging.error('response не является dict')
         raise TypeError
-    response_result = response.get('homeworks')
-    if not response_result:
+    elif response.get('homeworks') is None:
+        logging.error('Словарь response не содержит ключ "homeworks"')
         raise ValueError
-    elif not isinstance(response_result, list):
+    elif not isinstance(response['homeworks'], list):
+        logging.error(
+            'Значение словаря response содержит ключ "homeworks"'
+            ' значением которого не является list'
+        )
         raise TypeError
+    elif not response['homeworks']:
+        return response['homeworks']
     else:
-        try:
-            return response_result
-        except Exception as error:
-            logging.error(f'отсутствие ожидаемых ключей в ответе API: {error}')
+        response['homeworks'][0]
 
 
 def parse_status(homework):
@@ -107,24 +111,26 @@ def parse_status(homework):
     Извлекает из информации о конкретной домашней работе
     статус этой работы.
     """
-    if homework:
-        try:
-            homework_name = homework[0].get('status')
-            if homework_name in HOMEWORK_VERDICTS:
-                verdict = HOMEWORK_VERDICTS[homework[0]['status']]
-                return (f'Изменился статус проверки работы '
-                        f'"{homework_name}". {verdict}')
-            else:
-                logging.error(
-                    'неожиданный статус домашней работы, '
-                    'обнаруженный в ответе API'
-                    )
-                raise ValueError
-        except Exception as error:
-            logging.error(f'отсутствие ожидаемых ключей в ответе API: {error}')
-    else:
+    if not homework:
         logging.debug('отсутствие в ответе новых статусов')
         return None
+    elif not isinstance(homework, dict):
+        logging.debug('в списке значений "homework" нет ожидаемого словаря')
+        raise TypeError
+    elif HOMEWORK_VERDICTS.get(homework['status']) is None:
+        logging.error(
+            'неожиданный статус домашней работы, '
+            'обнаруженный в ответе API'
+        )
+        raise ValueError
+    elif homework.get('homework_name') is None:
+        logging.error('в ответе API домашки нет ключа "homework_name"')
+        raise ValueError
+    else:
+        homework_name = homework['homework_name']
+        verdict = HOMEWORK_VERDICTS[homework['status']]
+        return (f'Изменился статус проверки работы '
+                f'"{homework_name}". {verdict}')
 
 
 def main():
