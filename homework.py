@@ -39,7 +39,7 @@ def check_tokens():
         'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
         'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
         'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID
-        }
+    }
     for key, value in result.items():
         if not value:
             logging.critical(
@@ -51,10 +51,7 @@ def check_tokens():
 
 
 def send_message(bot, message):
-    """
-    Отправляет сообщение в Telegram-чат,
-    определяемый переменной окружения.
-    """
+    """Отправляет сообщение в Telegram-чат, опр-й переменной окружения."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug('удачная отправка сообщения в Telegram')
@@ -106,10 +103,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """
-    Извлекает из информации о конкретной домашней работе
-    статус этой работы.
-    """
+    """Извлекает из инф-ю о конкретной домашней работе статус этой работы."""
     if not homework:
         logging.debug('отсутствие в ответе новых статусов')
         return None
