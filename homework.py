@@ -59,7 +59,7 @@ def send_message(bot, message):
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug('удачная отправка сообщения в Telegram')
     except Exception as error:
-        logging.warning(error, exc_info=True)
+        logging.error(error, exc_info=True)
 
 
 def get_api_answer(timestamp):
@@ -102,7 +102,7 @@ def check_response(response):
     elif not response['homeworks']:
         return response['homeworks']
     else:
-        response['homeworks'][0]
+        return response['homeworks'][0]
 
 
 def parse_status(homework):
@@ -128,8 +128,9 @@ def parse_status(homework):
     else:
         homework_name = homework['homework_name']
         verdict = HOMEWORK_VERDICTS[homework['status']]
-        return (f'Изменился статус проверки работы '
-                f'"{homework_name}". {verdict}')
+        message = (f'Изменился статус проверки работы '
+                   f'"{homework_name}". {verdict}')
+        return message
 
 
 def main():
