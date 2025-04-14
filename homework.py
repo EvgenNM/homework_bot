@@ -1,10 +1,13 @@
-import time
-import os
-import requests
 import logging
+import os
+import time
+from http import HTTPStatus
 
-from telebot import TeleBot
+import requests
 from dotenv import load_dotenv
+from telebot import TeleBot, apihelper
+
+import exceptions as EX
 
 
 load_dotenv()
@@ -41,42 +44,48 @@ def check_tokens():
         'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID
     }
     for key, value in result.items():
+        result = []
         if not value:
+            result += [key]
             logging.critical(
-                f'Отсутствует обязательная переменная окружения: '
+                'Отсутствует обязательная переменная окружения: '
                 f'{key}. Программа принудительно остановлена.'
             )
-            break
-    return all([value for value in result.values()])
+        if result:
+            raise EX.ErrorCheckTokens(
+                f'Отсутствие переменных(-ой): {", ".join(result)}'
+            )
+        return True
 
 
 def send_message(bot, message):
     """Отправляет сообщение в Telegram-чат, опр-й переменной окружения."""
     try:
+        logging.debug('Начало отправки сообщения в Telegram')
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug('удачная отправка сообщения в Telegram')
-    except Exception as error:
+    except (apihelper.ApiException, requests.RequestException) as error:
         logging.error(error, exc_info=True)
 
 
 def get_api_answer(timestamp):
     """Делает запрос к единственному эндпоинту API-сервиса."""
-    homework_statuses = None
+    # homework_statuses = None
     try:
+        logging.debug('Начало запроса к эндпоинту API-сервиса')
         homework_statuses = requests.get(
             ENDPOINT,
             headers=HEADERS,
             params={'from_date': timestamp}
         )
-        if homework_statuses.status_code == 200:
-            result = homework_statuses.json()
-            return result
-    except Exception as error:
+    except requests.RequestException as error:
         logging.error(f'ошибка при запросе к эндпоинту: {error}')
+        raise EX.ErrorRequestGetApi
 
-    if homework_statuses is not None and homework_statuses.status_code != 200:
-        logging.error('Ошибка статус кода')
-        raise Exception
+    if homework_statuses.status_code == HTTPStatus.OK:
+        result = homework_statuses.json()
+        return result
+    raise EX.ErrorRequestGetApiHttpsStatus
 
 
 def check_response(response):
