@@ -92,10 +92,10 @@ def check_response(response):
     """Проверяет ответ API на соответствие документации из урока."""
     if not response:
         logging.error('response пуст')
-        return None
+        raise EX.ErrorResponseNone
     elif not isinstance(response, dict):
         logging.error('response не является dict')
-        raise TypeError
+        raise EX.ErrorResponseNotDict(f'В response находится {type(response)}')
     elif response.get('homeworks') is None:
         logging.error('Словарь response не содержит ключ "homeworks"')
         raise ValueError
