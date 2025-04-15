@@ -1,7 +1,8 @@
+from http import HTTPStatus
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import time
-from http import HTTPStatus
 
 import requests
 from dotenv import load_dotenv
@@ -72,7 +73,6 @@ def send_message(bot, message):
 
 def get_api_answer(timestamp):
     """Делает запрос к единственному эндпоинту API-сервиса."""
-    # homework_statuses = None
     try:
         logging.debug('Начало запроса к эндпоинту API-сервиса')
         homework_statuses = requests.get(
@@ -162,4 +162,8 @@ def main():
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    handler = RotatingFileHandler('main.log', maxBytes=50000000, backupCount=5)
+    logger.addHandler(handler)
     main()
