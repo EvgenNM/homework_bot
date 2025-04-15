@@ -109,28 +109,27 @@ def check_response(response):
 
 def parse_status(homework):
     """Извлекает из инф-ю о конкретной домашней работе статус этой работы."""
-    if not homework:
-        logger.debug('отсутствие в ответе новых статусов')
-        return None
-    elif not isinstance(homework, dict):
-        logger.error('в списке значений "homework" нет ожидаемого словаря')
-        raise EX.ErrorDictParseStatus
+    if not isinstance(homework, dict):
+        raise EX.ErrorDictParseStatus(
+            'в списке значений "homework" нет ожидаемого словаря'
+        )
     elif 'status' not in homework:
-        logger.error('в списке значений "homework" нет ожидаемого словаря')
-        raise EX.ErrorDictKeyParseStatus
+        raise EX.ErrorDictKeyParseStatus(
+            'в списке значений "homework" нет ожидаемого словаря'
+        )
     elif homework['status'] not in HOMEWORK_VERDICTS:
-        logger.error(
+        raise EX.ErrorDictKeyStatusInParseStatus(
             'неожиданный статус домашней работы, '
             'обнаруженный в ответе API'
         )
-        raise EX.ErrorDictKeyStatusInParseStatus
     elif 'homework_name' not in homework:
-        logger.error('в ответе API домашки нет ключа "homework_name"')
-        raise EX.ErrorDictKeyHomeworkNameInParseStatus
+        raise EX.ErrorDictKeyHomeworkNameInParseStatus(
+            'в ответе API домашки нет ключа "homework_name"'
+        )
     homework_name = homework['homework_name']
     verdict = HOMEWORK_VERDICTS[homework['status']]
     return ('Изменился статус проверки работы '
-            f'"{homework_name}". {verdict}')
+            '"{}". {}'.format(homework_name, verdict))
 
 
 def main():
@@ -146,8 +145,9 @@ def main():
             if homeworks:
                 message = parse_status(homeworks[0])
                 *_, timestamp = [
-                    None, response.get('current_date', time.time())
+                    None, response.get('current_date', timestamp)
                 ][send_message(bot, message)]
+                message_error = ''
             else:
                 logger.debug('Пустое сообщение не отправлено')
         except Exception as error:
