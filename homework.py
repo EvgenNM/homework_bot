@@ -1,12 +1,12 @@
-from http import HTTPStatus
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 import time
+from http import HTTPStatus
+from logging.handlers import RotatingFileHandler
 
+import requests
 from dotenv import load_dotenv
 from telebot import TeleBot, apihelper
-import requests
 
 import exceptions as EX
 
@@ -39,19 +39,19 @@ def check_tokens():
         'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
         'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID
     }
+    errors = []
     for key, value in result.items():
-        result = []
         if not value:
-            result += [key]
+            errors += [key]
             logger.critical(
                 'Отсутствует обязательная переменная окружения: '
                 f'{key}. Программа принудительно остановлена.'
             )
-        if result:
-            raise EX.ErrorCheckTokens(
-                f'Отсутствие переменных(-ой): {", ".join(result)}'
-            )
-        return True
+    if errors:
+        raise EX.ErrorCheckTokens(
+            f'Отсутствие переменных(-ой): {", ".join(result)}'
+        )
+    return True
 
 
 def send_message(bot, message):
@@ -76,35 +76,35 @@ def get_api_answer(timestamp):
             params={'from_date': timestamp}
         )
     except requests.RequestException as error:
-        logger.error(
+        raise EX.ErrorRequestGetApi(
             'ошибка при запросе c from_date '
             '"{}" к эндпоинту: {}'.format(timestamp, error)
         )
-        raise EX.ErrorRequestGetApi
 
     if homework_statuses.status_code == HTTPStatus.OK:
-        result = homework_statuses.json()
-        return result
-    raise EX.ErrorRequestGetApiHttpsStatus
+        return homework_statuses.json()
+    raise EX.ErrorRequestGetApiHttpsStatus(
+        'Ошибка статуса при запросе к эндпоинту API-сервиса'
+    )
 
 
 def check_response(response):
     """Проверяет ответ API на соответствие документации из урока."""
     if not isinstance(response, dict):
-        logger.error('response не является dict')
         raise EX.ErrorResponseNotDict(f'В response находится {type(response)}')
     elif response.get('homeworks') is None:
-        logger.error('Словарь response не содержит ключ "homeworks"')
-        raise EX.ErrorResponseDictKey
-    elif not isinstance(response['homeworks'], list):
-        logger.error(
+        raise EX.ErrorResponseDictKey(
+            'Словарь response не содержит ключ "homeworks"'
+        )
+
+    homeworks = response['homeworks']
+
+    if not isinstance(homeworks, list):
+        raise EX.ErrorResponseNotList(
             'Значение словаря response содержит ключ "homeworks"'
             ' значением которого не является list'
         )
-        raise EX.ErrorResponseNotList
-    elif not response['homeworks']:
-        return None
-    return response['homeworks']
+    return homeworks
 
 
 def parse_status(homework):
@@ -152,6 +152,7 @@ def main():
                 logger.debug('Пустое сообщение не отправлено')
         except Exception as error:
             message = f'Возникла ошибка {error}'
+            logger.error(message)
             if message_error != message:
                 send_message(bot, message)
                 message_error = message
