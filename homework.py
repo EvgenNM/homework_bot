@@ -51,7 +51,6 @@ def check_tokens():
         raise EX.ErrorCheckTokens(
             f'Отсутствие переменных(-ой): {", ".join(result)}'
         )
-    return True
 
 
 def send_message(bot, message):
@@ -92,7 +91,7 @@ def check_response(response):
     """Проверяет ответ API на соответствие документации из урока."""
     if not isinstance(response, dict):
         raise EX.ErrorResponseNotDict(f'В response находится {type(response)}')
-    elif response.get('homeworks') is None:
+    if response.get('homeworks') is None:
         raise EX.ErrorResponseDictKey(
             'Словарь response не содержит ключ "homeworks"'
         )
@@ -102,7 +101,7 @@ def check_response(response):
     if not isinstance(homeworks, list):
         raise EX.ErrorResponseNotList(
             'Значение словаря response содержит ключ "homeworks"'
-            ' значением которого не является list'
+            f' значением которого является {type(homeworks)} вместо list'
         )
     return homeworks
 
@@ -113,16 +112,16 @@ def parse_status(homework):
         raise EX.ErrorDictParseStatus(
             'в списке значений "homework" нет ожидаемого словаря'
         )
-    elif 'status' not in homework:
+    if 'status' not in homework:
         raise EX.ErrorDictKeyParseStatus(
             'в списке значений "homework" нет ожидаемого словаря'
         )
-    elif homework['status'] not in HOMEWORK_VERDICTS:
+    if homework['status'] not in HOMEWORK_VERDICTS:
         raise EX.ErrorDictKeyStatusInParseStatus(
             'неожиданный статус домашней работы, '
             'обнаруженный в ответе API'
         )
-    elif 'homework_name' not in homework:
+    if 'homework_name' not in homework:
         raise EX.ErrorDictKeyHomeworkNameInParseStatus(
             'в ответе API домашки нет ключа "homework_name"'
         )
@@ -144,10 +143,9 @@ def main():
             homeworks = check_response(response)
             if homeworks:
                 message = parse_status(homeworks[0])
-                *_, timestamp = [
-                    None, response.get('current_date', timestamp)
-                ][send_message(bot, message)]
-                message_error = ''
+                if send_message(bot, message):
+                    timestamp = response.get('current_date', timestamp)
+                    message_error = ''
             else:
                 logger.debug('Пустое сообщение не отправлено')
         except Exception as error:
